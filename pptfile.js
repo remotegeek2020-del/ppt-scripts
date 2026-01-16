@@ -1,4 +1,3 @@
-<script>
 (function() {
     // --- Configuration ---
     const FNAME_SELECTOR = 'input[name="contact.first_name"], #contact\\.first_name input';
@@ -158,9 +157,9 @@
     obs.observe(document.body, { childList: true, subtree: true });
     setTimeout(runAutomation, 2500); 
 })();
-</script>
 
-<script>
+
+
 (function() {
   // --- Configuration ---
   const TARGET_TERMINATED = "terminated partner";
@@ -368,9 +367,9 @@
   // Also check on initial load
   setTimeout(checkStatus, 1000);
 })();
-</script>
 
-<script>
+
+
   (function() {
     'use strict';
 
@@ -514,9 +513,9 @@
 
     setInterval(updatePptUI, 300);
 })();
-</script>
 
-<script>
+
+
   (function() {
     // 1. SETTINGS & URL FILTERS
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5eeQBjYHIM2I8A1NKXsAFNVRV3VzERI2GH-ftTQoDjh34FQ4pJD6cUOEmWeH54W31/exec';
@@ -636,4 +635,4 @@
 
     setInterval(injectIcons, 1500);
 })();
-</script>
+
