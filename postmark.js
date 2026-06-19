@@ -85,4 +85,51 @@ async function getMessages(token, fromdate, todate, subject = '', maxMessages = 
   return messages;
 }
 
-module.exports = { getStats, getMessages, getBounces };
+async function paginate(api, path, resultKey, maxItems = 5000) {
+  const items = [];
+  let offset = 0;
+  const count = 500;
+  while (items.length < maxItems) {
+    const res = await api.get(path, { params: { count, offset } });
+    const batch = res.data[resultKey] || [];
+    if (batch.length === 0) break;
+    items.push(...batch);
+    offset += batch.length;
+    if (items.length >= res.data.TotalCount) break;
+  }
+  return items;
+}
+
+async function getOpens(token, fromdate, todate) {
+  const api = client(token);
+  const items = [];
+  let offset = 0;
+  const count = 500;
+  while (items.length < 10000) {
+    const res = await api.get('/messages/outbound/opens', { params: { count, offset, fromdate, todate } });
+    const batch = res.data.Opens || [];
+    if (batch.length === 0) break;
+    items.push(...batch);
+    offset += batch.length;
+    if (items.length >= res.data.TotalCount) break;
+  }
+  return items;
+}
+
+async function getClicks(token, fromdate, todate) {
+  const api = client(token);
+  const items = [];
+  let offset = 0;
+  const count = 500;
+  while (items.length < 10000) {
+    const res = await api.get('/messages/outbound/clicks', { params: { count, offset, fromdate, todate } });
+    const batch = res.data.Clicks || [];
+    if (batch.length === 0) break;
+    items.push(...batch);
+    offset += batch.length;
+    if (items.length >= res.data.TotalCount) break;
+  }
+  return items;
+}
+
+module.exports = { getStats, getMessages, getBounces, getOpens, getClicks };
