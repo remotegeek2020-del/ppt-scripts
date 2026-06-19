@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postmark Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f3f6;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .logo span { color: #FFBE00; }
+
+    main { max-width: 1300px; margin: 0 auto; padding: 2rem; }
+
+    /* Filters */
+    .filters {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .filter-group label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6c757d;
+    }
+
+    .filter-group input, .filter-group select {
+      border: 1.5px solid #dee2e6;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.88rem;
+      color: #1a1a2e;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .filter-group input:focus, .filter-group select:focus {
+      border-color: #FFBE00;
+      box-shadow: 0 0 0 3px rgba(255,190,0,0.15);
+    }
+
+    .subject-input { width: 280px; }
+
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .preset-btn {
+      border: 1.5px solid #dee2e6;
+      background: #fff;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: #495057;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover { border-color: #FFBE00; color: #1a1a2e; }
+    .preset-btn.active { background: #FFBE00; border-color: #FFBE00; color: #1a1a2e; font-weight: 600; }
+
+    .search-btn {
+      background: #FFBE00;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #1a1a2e;
+      transition: background 0.15s;
+      align-self: flex-end;
+    }
+
+    .search-btn:hover { background: #f0b000; }
+    .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Stats cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      border-top: 3px solid transparent;
+    }
+
+    .stat-card.sent { border-top-color: #4361ee; }
+    .stat-card.opens { border-top-color: #3a86ff; }
+    .stat-card.clicks { border-top-color: #8338ec; }
+    .stat-card.bounces { border-top-color: #ef233c; }
+    .stat-card.unsubs { border-top-color: #ff9f1c; }
+    .stat-card.spam { border-top-color: #e63946; }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6c757d;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #1a1a2e;
+    }
+
+    .stat-sub {
+      font-size: 0.8rem;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+
+    .stat-sub strong { color: #1a1a2e; }
+
+    /* Table section */
+    .table-section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #f1f3f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .table-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .table-meta {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .note {
+      font-size: 0.75rem;
+      color: #adb5bd;
+      font-style: italic;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      background: #f8f9fa;
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6c757d;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    thead th:hover { background: #e9ecef; color: #1a1a2e; }
+    thead th.sort-asc::after { content: ' ↑'; }
+    thead th.sort-desc::after { content: ' ↓'; }
+
+    tbody tr:hover { background: #f8f9fa; }
+
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f1f3f6;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .subject-cell {
+      max-width: 380px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-ok { background: #d4edda; color: #155724; }
+    .badge-warn { background: #fff3cd; color: #856404; }
+    .badge-bad { background: #f8d7da; color: #721c24; }
+
+    /* Placeholder / loading / error */
+    .placeholder {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: #adb5bd;
+    }
+
+    .placeholder-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .placeholder p { font-size: 0.9rem; }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #dee2e6;
+      border-top-color: #1a1a2e;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-bar {
+      background: #f8d7da;
+      color: #721c24;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      display: none;
+    }
+
+    .capped-warning {
+      background: #fff3cd;
+      color: #856404;
+      font-size: 0.8rem;
+      padding: 8px 16px;
+      border-top: 1px solid #ffeeba;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Postmark <span>Dashboard</span></div>
+</header>
+
+<main>
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Presets</label>
+      <div class="presets">
+        <button class="preset-btn" data-days="7">7 days</button>
+        <button class="preset-btn active" data-days="30">30 days</button>
+        <button class="preset-btn" data-days="60">60 days</button>
+        <button class="preset-btn" data-days="90">90 days</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>From</label>
+      <input type="date" id="fromdate" />
+    </div>
+    <div class="filter-group">
+      <label>To</label>
+      <input type="date" id="todate" />
+    </div>
+    <div class="filter-group">
+      <label>Subject contains</label>
+      <input type="text" id="subject" class="subject-input" placeholder="e.g. Newsletter, Welcome..." />
+    </div>
+    <button class="search-btn" id="searchBtn" onclick="loadData()">Search</button>
+  </div>
+
+  <!-- Error bar -->
+  <div class="error-bar" id="errorBar"></div>
+
+  <!-- Stats cards -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card sent">
+      <div class="stat-label">Sent</div>
+      <div class="stat-value" id="s-sent">—</div>
+      <div class="stat-sub" id="s-sent-sub"></div>
+    </div>
+    <div class="stat-card opens">
+      <div class="stat-label">Opens</div>
+      <div class="stat-value" id="s-opens">—</div>
+      <div class="stat-sub" id="s-opens-sub"></div>
+    </div>
+    <div class="stat-card clicks">
+      <div class="stat-label">Clicks</div>
+      <div class="stat-value" id="s-clicks">—</div>
+      <div class="stat-sub" id="s-clicks-sub"></div>
+    </div>
+    <div class="stat-card bounces">
+      <div class="stat-label">Bounces</div>
+      <div class="stat-value" id="s-bounces">—</div>
+      <div class="stat-sub" id="s-bounces-sub"></div>
+    </div>
+    <div class="stat-card unsubs">
+      <div class="stat-label">Unsubscribes</div>
+      <div class="stat-value" id="s-unsubs">—</div>
+      <div class="stat-sub"></div>
+    </div>
+    <div class="stat-card spam">
+      <div class="stat-label">Spam</div>
+      <div class="stat-value" id="s-spam">—</div>
+      <div class="stat-sub"></div>
+    </div>
+  </div>
+
+  <!-- Subject table -->
+  <div class="table-section">
+    <div class="table-header">
+      <div>
+        <div class="table-title">By Subject Line</div>
+        <div class="note">Bounced / Spam / Unsubscribed counts are from message statuses returned by the API</div>
+      </div>
+      <div class="table-meta" id="tableMeta"></div>
+    </div>
+    <div class="table-wrap">
+      <table id="subjectTable">
+        <thead>
+          <tr>
+            <th data-col="subject">Subject</th>
+            <th data-col="sent" class="num sort-desc">Sent</th>
+            <th data-col="delivered" class="num">Delivered</th>
+            <th data-col="opened" class="num">Opened</th>
+            <th data-col="bounced" class="num">Bounced</th>
+            <th data-col="bounceRate" class="num">Bounce %</th>
+            <th data-col="spam" class="num">Spam</th>
+            <th data-col="unsubscribed" class="num">Unsub</th>
+          </tr>
+        </thead>
+        <tbody id="subjectBody">
+          <tr>
+            <td colspan="8">
+              <div class="placeholder">
+                <div class="placeholder-icon">📊</div>
+                <p>Set a date range and click Search to load stats</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="cappedWarning" class="capped-warning" style="display:none">
+      ⚠️ Results capped at 10,000 messages. Narrow your date range or add a subject filter for complete data.
+    </div>
+  </div>
+</main>
+
+<script>
+  // ── Date helpers ────────────────────────────────────────────────────────────
+  function toDateStr(d) {
+    return d.toISOString().split('T')[0];
+  }
+
+  function setRange(days) {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    document.getElementById('fromdate').value = toDateStr(from);
+    document.getElementById('todate').value = toDateStr(to);
+  }
+
+  // Init with 30-day default
+  setRange(30);
+
+  // Preset buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setRange(parseInt(btn.dataset.days));
+    });
+  });
+
+  // Clear preset active state when dates are manually changed
+  ['fromdate', 'todate'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    });
+  });
+
+  // Enter key triggers search
+  document.getElementById('subject').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadData();
+  });
+
+  // ── Number formatting ────────────────────────────────────────────────────────
+  function fmt(n) { return n == null ? '—' : n.toLocaleString(); }
+  function pct(n, d) {
+    if (!d) return '—';
+    return (n / d * 100).toFixed(1) + '%';
+  }
+  function rateBadge(rate) {
+    if (rate === '—') return `<span>${rate}</span>`;
+    const v = parseFloat(rate);
+    const cls = v > 5 ? 'badge-bad' : v > 2 ? 'badge-warn' : 'badge-ok';
+    return `<span class="badge ${cls}">${rate}</span>`;
+  }
+
+  // ── Show / hide error ────────────────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById('errorBar');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+  }
+  function clearError() {
+    document.getElementById('errorBar').style.display = 'none';
+  }
+
+  // ── Update stat cards ────────────────────────────────────────────────────────
+  function renderStats(s) {
+    document.getElementById('s-sent').textContent = fmt(s.sent);
+    document.getElementById('s-sent-sub').innerHTML = `<strong>${fmt(s.bounced + (s.sent - s.bounced))}</strong> delivered`;
+
+    const openRate = s.withOpenTracking ? pct(s.uniqueOpens, s.withOpenTracking) : '—';
+    document.getElementById('s-opens').textContent = fmt(s.opens);
+    document.getElementById('s-opens-sub').innerHTML = `<strong>${openRate}</strong> unique open rate`;
+
+    const clickRate = s.withLinkTracking ? pct(s.uniqueClicks, s.withLinkTracking) : '—';
+    document.getElementById('s-clicks').textContent = fmt(s.totalClicks);
+    document.getElementById('s-clicks-sub').innerHTML = `<strong>${clickRate}</strong> unique click rate`;
+
+    document.getElementById('s-bounces').textContent = fmt(s.bounced);
+    document.getElementById('s-bounces-sub').innerHTML = `<strong>${s.bounceRate.toFixed(1)}%</strong> bounce rate`;
+
+    document.getElementById('s-unsubs').textContent = fmt(s.unsubscribes);
+    document.getElementById('s-spam').textContent = fmt(s.spamComplaints);
+  }
+
+  // ── Table sort state ─────────────────────────────────────────────────────────
+  let tableData = [];
+  let sortCol = 'sent';
+  let sortDir = 'desc';
+
+  document.querySelectorAll('#subjectTable thead th').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) {
+        sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+      } else {
+        sortCol = col;
+        sortDir = col === 'subject' ? 'asc' : 'desc';
+      }
+      renderTable();
+    });
+  });
+
+  function renderTable() {
+    // Update sort indicators
+    document.querySelectorAll('#subjectTable thead th').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.col === sortCol) {
+        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+
+    const sorted = [...tableData].sort((a, b) => {
+      let av = a[sortCol], bv = b[sortCol];
+      if (sortCol === 'bounceRate') {
+        av = a.sent ? a.bounced / a.sent : 0;
+        bv = b.sent ? b.bounced / b.sent : 0;
+      }
+      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir === 'asc' ? av - bv : bv - av;
+    });
+
+    const body = document.getElementById('subjectBody');
+    if (sorted.length === 0) {
+      body.innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">🔍</div><p>No messages found for this date range and subject filter</p></div></td></tr>`;
+      return;
+    }
+
+    body.innerHTML = sorted.map(row => {
+      const bRate = row.sent ? pct(row.bounced, row.sent) : '—';
+      return `
+        <tr>
+          <td class="subject-cell" title="${escHtml(row.subject)}">${escHtml(row.subject)}</td>
+          <td class="num">${fmt(row.sent)}</td>
+          <td class="num">${fmt(row.delivered)}</td>
+          <td class="num">${fmt(row.opened)}</td>
+          <td class="num">${fmt(row.bounced)}</td>
+          <td class="num">${rateBadge(bRate)}</td>
+          <td class="num">${fmt(row.spam)}</td>
+          <td class="num">${fmt(row.unsubscribed)}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Main load ────────────────────────────────────────────────────────────────
+  async function loadData() {
+    clearError();
+    const fromdate = document.getElementById('fromdate').value;
+    const todate = document.getElementById('todate').value;
+    const subject = document.getElementById('subject').value.trim();
+    const btn = document.getElementById('searchBtn');
+
+    if (!fromdate || !todate) {
+      showError('Please select a date range.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Loading…';
+
+    // Show loading state in cards
+    ['s-sent','s-opens','s-clicks','s-bounces','s-unsubs','s-spam'].forEach(id => {
+      document.getElementById(id).textContent = '…';
+    });
+    document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><span class="loading-spinner"></span> Fetching messages…</div></td></tr>`;
+    document.getElementById('tableMeta').textContent = '';
+    document.getElementById('cappedWarning').style.display = 'none';
+
+    const qs = new URLSearchParams({ fromdate, todate, ...(subject && { subject }) });
+
+    try {
+      const [statsRes, msgsRes] = await Promise.all([
+        fetch(`/api/stats?${qs}`),
+        fetch(`/api/messages?${qs}`),
+      ]);
+
+      const [stats, msgs] = await Promise.all([statsRes.json(), msgsRes.json()]);
+
+      if (stats.error) throw new Error('Stats API: ' + stats.error);
+      if (msgs.error) throw new Error('Messages API: ' + msgs.error);
+
+      renderStats(stats);
+
+      tableData = msgs.subjects || [];
+      document.getElementById('tableMeta').textContent =
+        `${fmt(msgs.total)} messages · ${tableData.length} subject${tableData.length !== 1 ? 's' : ''}`;
+
+      if (msgs.capped) {
+        document.getElementById('cappedWarning').style.display = 'block';
+      }
+
+      renderTable();
+    } catch (err) {
+      showError(err.message);
+      document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">❌</div><p>${escHtml(err.message)}</p></div></td></tr>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search';
+    }
+  }
+</script>
+</body>
+</html>
