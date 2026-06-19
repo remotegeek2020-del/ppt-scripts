@@ -309,7 +309,7 @@
       <button onclick="saveToken()" style="background:#FFBE00; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer; font-size:0.875rem;">Save Token</button>
       <span id="tokenStatus" style="font-size:0.8rem; color:#6c757d;"></span>
     </div>
-    <div style="font-size:0.75rem; color:#856404; margin-top:6px;">Token is saved in your browser only and sent per-request. Alternatively create a <code>.env</code> file with <code>POSTMARK_SERVER_TOKEN=your_token</code> and restart the server.</div>
+    <div style="font-size:0.75rem; color:#856404; margin-top:6px;">Token is saved in your browser only and sent per-request. To persist it on the server: in Vercel go to <strong>Project Settings → Environment Variables</strong> and add <code>POSTMARK_SERVER_TOKEN</code>, then redeploy.</div>
   </div>
 
   <!-- Filters -->
