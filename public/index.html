@@ -300,6 +300,18 @@
 </header>
 
 <main>
+  <!-- Token banner (shown when server has no token configured) -->
+  <div id="tokenBanner" style="display:none; background:#fff3cd; border-radius:10px; padding:1rem 1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+    <div style="font-size:0.85rem; font-weight:600; color:#856404; margin-bottom:8px;">⚠️ No Postmark token configured on the server</div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input type="password" id="tokenInput" placeholder="Paste your Postmark Server API Token"
+        style="flex:1; min-width:320px; border:1.5px solid #ffc107; border-radius:6px; padding:7px 10px; font-size:0.88rem; outline:none; font-family:monospace;" />
+      <button onclick="saveToken()" style="background:#FFBE00; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer; font-size:0.875rem;">Save Token</button>
+      <span id="tokenStatus" style="font-size:0.8rem; color:#6c757d;"></span>
+    </div>
+    <div style="font-size:0.75rem; color:#856404; margin-top:6px;">Token is saved in your browser only and sent per-request. Alternatively create a <code>.env</code> file with <code>POSTMARK_SERVER_TOKEN=your_token</code> and restart the server.</div>
+  </div>
+
   <!-- Filters -->
   <div class="filters">
     <div class="filter-group">
@@ -405,6 +417,34 @@
 </main>
 
 <script>
+  // ── Token management (localStorage fallback when .env not set) ───────────────
+  function getLocalToken() { return localStorage.getItem('pm_token') || ''; }
+
+  function saveToken() {
+    const val = document.getElementById('tokenInput').value.trim();
+    if (!val) return;
+    localStorage.setItem('pm_token', val);
+    document.getElementById('tokenStatus').textContent = 'Saved!';
+    document.getElementById('tokenInput').value = '';
+    setTimeout(() => document.getElementById('tokenStatus').textContent = '', 2000);
+  }
+
+  function apiHeaders() {
+    const t = getLocalToken();
+    return t ? { 'x-postmark-token': t } : {};
+  }
+
+  async function checkHealth() {
+    try {
+      const res = await fetch('/api/health');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.tokenConfigured && !getLocalToken()) {
+        document.getElementById('tokenBanner').style.display = 'block';
+      }
+    } catch (_) {}
+  }
+
   // ── Date helpers ────────────────────────────────────────────────────────────
   function toDateStr(d) {
     return d.toISOString().split('T')[0];
@@ -418,8 +458,9 @@
     document.getElementById('todate').value = toDateStr(to);
   }
 
-  // Init with 30-day default
+  // Init with 30-day default and check server health
   setRange(30);
+  checkHealth();
 
   // Preset buttons
   document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -579,12 +620,18 @@
     const qs = new URLSearchParams({ fromdate, todate, ...(subject && { subject }) });
 
     try {
+      const headers = apiHeaders();
       const [statsRes, msgsRes] = await Promise.all([
-        fetch(`/api/stats?${qs}`),
-        fetch(`/api/messages?${qs}`),
+        fetch(`/api/stats?${qs}`, { headers }),
+        fetch(`/api/messages?${qs}`, { headers }),
       ]);
 
-      const [stats, msgs] = await Promise.all([statsRes.json(), msgsRes.json()]);
+      async function toJson(res) {
+        const text = await res.text();
+        try { return JSON.parse(text); }
+        catch { throw new Error(`Server returned non-JSON (status ${res.status}). Is the server running? Check the terminal.`); }
+      }
+      const [stats, msgs] = await Promise.all([toJson(statsRes), toJson(msgsRes)]);
 
       if (stats.error) throw new Error('Stats API: ' + stats.error);
       if (msgs.error) throw new Error('Messages API: ' + msgs.error);

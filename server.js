@@ -3,6 +3,7 @@ const express = require('express');
 const { getStats, getMessages } = require('./postmark');
 
 const app = express();
+app.use(express.json());
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
@@ -86,6 +87,25 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
+app.get('/api/health', (req, res) => {
+  const hasToken = !!(process.env.POSTMARK_SERVER_TOKEN);
+  res.json({ ok: true, tokenConfigured: hasToken });
+});
+
+// Always return JSON for unknown /api/* routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: `Unknown route: ${req.path}` });
+});
+
+// Global error handler — ensures JSON even on unexpected throws
+app.use((err, req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message || 'Internal server error' });
+});
+
 app.listen(PORT, () => {
   console.log(`Postmark Dashboard → http://localhost:${PORT}`);
+  if (!process.env.POSTMARK_SERVER_TOKEN) {
+    console.warn('⚠️  POSTMARK_SERVER_TOKEN not set. Create a .env file or enter your token in the dashboard.');
+  }
 });
