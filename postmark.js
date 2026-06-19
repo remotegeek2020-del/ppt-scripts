@@ -16,10 +16,15 @@ async function getStats(token, fromdate, todate) {
   const api = client(token);
   const params = { fromdate, todate };
 
-  const [outbound, unsubs] = await Promise.all([
-    api.get('/stats/outbound', { params }),
-    api.get('/stats/outbound/unsubscribes', { params }),
-  ]);
+  const outbound = await api.get('/stats/outbound', { params });
+
+  let unsubscribes = 0;
+  try {
+    const unsubs = await api.get('/stats/outbound/unsubscribes', { params });
+    unsubscribes = unsubs.data.Unsubscribes || 0;
+  } catch (_) {
+    // endpoint not available on all plans — skip silently
+  }
 
   const o = outbound.data;
   return {
@@ -33,7 +38,7 @@ async function getStats(token, fromdate, todate) {
     uniqueClicks: o.UniqueLinksClicked || 0,
     withOpenTracking: o.WithOpenTracking || 0,
     withLinkTracking: o.WithLinkTracking || 0,
-    unsubscribes: unsubs.data.Unsubscribes || 0,
+    unsubscribes,
   };
 }
 
