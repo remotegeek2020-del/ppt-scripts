@@ -380,7 +380,7 @@
     <div class="table-header">
       <div>
         <div class="table-title">By Subject Line</div>
-        <div class="note">Bounced / Spam / Unsubscribed counts are from message statuses returned by the API</div>
+        <div class="note">Sent from Messages API · Bounced from Bounces API · Opens &amp; Clicks shown in cards above</div>
       </div>
       <div class="table-meta" id="tableMeta"></div>
     </div>
@@ -390,17 +390,13 @@
           <tr>
             <th data-col="subject">Subject</th>
             <th data-col="sent" class="num sort-desc">Sent</th>
-            <th data-col="delivered" class="num">Delivered</th>
-            <th data-col="opened" class="num">Opened</th>
             <th data-col="bounced" class="num">Bounced</th>
             <th data-col="bounceRate" class="num">Bounce %</th>
-            <th data-col="spam" class="num">Spam</th>
-            <th data-col="unsubscribed" class="num">Unsub</th>
           </tr>
         </thead>
         <tbody id="subjectBody">
           <tr>
-            <td colspan="8">
+            <td colspan="4">
               <div class="placeholder">
                 <div class="placeholder-icon">📊</div>
                 <p>Set a date range and click Search to load stats</p>
@@ -408,6 +404,7 @@
             </td>
           </tr>
         </tbody>
+
       </table>
     </div>
     <div id="cappedWarning" class="capped-warning" style="display:none">
@@ -565,7 +562,7 @@
 
     const body = document.getElementById('subjectBody');
     if (sorted.length === 0) {
-      body.innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">🔍</div><p>No messages found for this date range and subject filter</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="4"><div class="placeholder"><div class="placeholder-icon">🔍</div><p>No messages found for this date range and subject filter</p></div></td></tr>`;
       return;
     }
 
@@ -575,12 +572,8 @@
         <tr>
           <td class="subject-cell" title="${escHtml(row.subject)}">${escHtml(row.subject)}</td>
           <td class="num">${fmt(row.sent)}</td>
-          <td class="num">${fmt(row.delivered)}</td>
-          <td class="num">${fmt(row.opened)}</td>
           <td class="num">${fmt(row.bounced)}</td>
           <td class="num">${rateBadge(bRate)}</td>
-          <td class="num">${fmt(row.spam)}</td>
-          <td class="num">${fmt(row.unsubscribed)}</td>
         </tr>`;
     }).join('');
   }
@@ -613,7 +606,7 @@
     ['s-sent','s-opens','s-clicks','s-bounces','s-unsubs','s-spam'].forEach(id => {
       document.getElementById(id).textContent = '…';
     });
-    document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><span class="loading-spinner"></span> Fetching messages…</div></td></tr>`;
+    document.getElementById('subjectBody').innerHTML = `<tr><td colspan="4"><div class="placeholder"><span class="loading-spinner"></span> Fetching messages…</div></td></tr>`;
     document.getElementById('tableMeta').textContent = '';
     document.getElementById('cappedWarning').style.display = 'none';
 
@@ -649,7 +642,7 @@
       renderTable();
     } catch (err) {
       showError(err.message);
-      document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">❌</div><p>${escHtml(err.message)}</p></div></td></tr>`;
+      document.getElementById('subjectBody').innerHTML = `<tr><td colspan="4"><div class="placeholder"><div class="placeholder-icon">❌</div><p>${escHtml(err.message)}</p></div></td></tr>`;
     } finally {
       btn.disabled = false;
       btn.textContent = 'Search';

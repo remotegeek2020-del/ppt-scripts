@@ -1,4 +1,4 @@
-const { getMessages } = require('../postmark');
+const { getMessages, getBounces } = require('../postmark');
 
 function dateStr(d) { return d.toISOString().split('T')[0]; }
 
@@ -18,23 +18,39 @@ module.exports = async (req, res) => {
   const subject = req.query.subject || '';
 
   try {
-    const messages = await getMessages(token, fromdate, todate, subject, 5000);
+    // Fetch messages and bounces in parallel
+    const [messages, bounces] = await Promise.all([
+      getMessages(token, fromdate, todate, subject, 5000),
+      getBounces(token, fromdate, todate, 5000).catch(() => []),
+    ]);
 
+    // Index bounces by subject
+    const bouncesBySubject = {};
+    for (const b of bounces) {
+      const subj = b.Subject || '(no subject)';
+      // If subject filter is active, only count matching bounces
+      if (subject && !subj.toLowerCase().includes(subject.toLowerCase())) continue;
+      bouncesBySubject[subj] = (bouncesBySubject[subj] || 0) + 1;
+    }
+
+    // Group messages by subject — sent count only (status is unreliable for delivered/opened)
     const grouped = {};
     for (const msg of messages) {
       const subj = msg.Subject || '(no subject)';
       if (!grouped[subj]) {
-        grouped[subj] = { subject: subj, sent: 0, delivered: 0, opened: 0, bounced: 0, spam: 0, unsubscribed: 0, other: 0 };
+        grouped[subj] = { subject: subj, sent: 0, bounced: 0 };
       }
-      const g = grouped[subj];
-      g.sent++;
-      const status = (msg.Status || '').toLowerCase();
-      if (status === 'delivered') g.delivered++;
-      else if (status === 'opened') { g.delivered++; g.opened++; }
-      else if (status.includes('bounce')) g.bounced++;
-      else if (status === 'spamcomplaint') g.spam++;
-      else if (status === 'unsubscribe') g.unsubscribed++;
-      else g.other++;
+      grouped[subj].sent++;
+    }
+
+    // Merge bounce counts
+    for (const [subj, count] of Object.entries(bouncesBySubject)) {
+      if (grouped[subj]) {
+        grouped[subj].bounced = count;
+      } else {
+        // Bounce subject not in messages list (outside date range edge case)
+        grouped[subj] = { subject: subj, sent: 0, bounced: count };
+      }
     }
 
     const subjects = Object.values(grouped).sort((a, b) => b.sent - a.sent);

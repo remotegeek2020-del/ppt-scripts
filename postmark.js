@@ -42,6 +42,25 @@ async function getStats(token, fromdate, todate) {
   };
 }
 
+async function getBounces(token, fromdate, todate, maxBounces = 5000) {
+  const api = client(token);
+  const bounces = [];
+  let offset = 0;
+  const count = 500;
+
+  while (bounces.length < maxBounces) {
+    const params = { count, offset, fromdate, todate };
+    const res = await api.get('/bounces', { params });
+    const batch = res.data.Bounces || [];
+    if (batch.length === 0) break;
+    bounces.push(...batch);
+    offset += batch.length;
+    if (bounces.length >= res.data.TotalCount) break;
+  }
+
+  return bounces;
+}
+
 async function getMessages(token, fromdate, todate, subject = '', maxMessages = 10000) {
   const api = client(token);
   const messages = [];
@@ -66,4 +85,4 @@ async function getMessages(token, fromdate, todate, subject = '', maxMessages = 
   return messages;
 }
 
-module.exports = { getStats, getMessages };
+module.exports = { getStats, getMessages, getBounces };
