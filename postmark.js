@@ -100,12 +100,12 @@ async function paginate(api, path, resultKey, maxItems = 5000) {
   return items;
 }
 
-async function getOpens(token, fromdate, todate) {
+async function getOpens(token, fromdate, todate, maxItems = 10000) {
   const api = client(token);
   const items = [];
   let offset = 0;
   const count = 500;
-  while (items.length < 10000) {
+  while (items.length < maxItems) {
     const res = await api.get('/messages/outbound/opens', { params: { count, offset, fromdate, todate } });
     const batch = res.data.Opens || [];
     if (batch.length === 0) break;
@@ -116,12 +116,12 @@ async function getOpens(token, fromdate, todate) {
   return items;
 }
 
-async function getClicks(token, fromdate, todate) {
+async function getClicks(token, fromdate, todate, maxItems = 10000) {
   const api = client(token);
   const items = [];
   let offset = 0;
   const count = 500;
-  while (items.length < 10000) {
+  while (items.length < maxItems) {
     const res = await api.get('/messages/outbound/clicks', { params: { count, offset, fromdate, todate } });
     const batch = res.data.Clicks || [];
     if (batch.length === 0) break;
