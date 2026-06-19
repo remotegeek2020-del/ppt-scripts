@@ -1,4 +1,4 @@
-const { getMessages, getBounces } = require('../postmark');
+const { getMessages, getBounces, getOpens, getClicks } = require('../postmark');
 
 function dateStr(d) { return d.toISOString().split('T')[0]; }
 
@@ -18,39 +18,41 @@ module.exports = async (req, res) => {
   const subject = req.query.subject || '';
 
   try {
-    // Fetch messages and bounces in parallel
-    const [messages, bounces] = await Promise.all([
+    const [messages, bounces, opens, clicks] = await Promise.all([
       getMessages(token, fromdate, todate, subject, 5000),
       getBounces(token, fromdate, todate, 5000).catch(() => []),
+      getOpens(token, fromdate, todate).catch(() => []),
+      getClicks(token, fromdate, todate).catch(() => []),
     ]);
 
-    // Index bounces by subject
-    const bouncesBySubject = {};
-    for (const b of bounces) {
-      const subj = b.Subject || '(no subject)';
-      // If subject filter is active, only count matching bounces
-      if (subject && !subj.toLowerCase().includes(subject.toLowerCase())) continue;
-      bouncesBySubject[subj] = (bouncesBySubject[subj] || 0) + 1;
+    // Build MessageID → subject lookup from messages we fetched
+    const msgSubject = {};
+    for (const msg of messages) {
+      msgSubject[msg.MessageID] = msg.Subject || '(no subject)';
     }
 
-    // Group messages by subject — sent count only (status is unreliable for delivered/opened)
+    // Unique recipients who opened / clicked (one count per message)
+    const openedMsgIds = new Set(opens.map(o => o.MessageID));
+    const clickedMsgIds = new Set(clicks.map(c => c.MessageID));
+
+    // Group by subject
     const grouped = {};
     for (const msg of messages) {
       const subj = msg.Subject || '(no subject)';
       if (!grouped[subj]) {
-        grouped[subj] = { subject: subj, sent: 0, bounced: 0 };
+        grouped[subj] = { subject: subj, sent: 0, opened: 0, clicked: 0, bounced: 0 };
       }
       grouped[subj].sent++;
+      if (openedMsgIds.has(msg.MessageID)) grouped[subj].opened++;
+      if (clickedMsgIds.has(msg.MessageID)) grouped[subj].clicked++;
     }
 
-    // Merge bounce counts
-    for (const [subj, count] of Object.entries(bouncesBySubject)) {
-      if (grouped[subj]) {
-        grouped[subj].bounced = count;
-      } else {
-        // Bounce subject not in messages list (outside date range edge case)
-        grouped[subj] = { subject: subj, sent: 0, bounced: count };
-      }
+    // Merge bounce counts from Bounces API (accurate source)
+    for (const b of bounces) {
+      const subj = b.Subject || '(no subject)';
+      if (subject && !subj.toLowerCase().includes(subject.toLowerCase())) continue;
+      if (!grouped[subj]) grouped[subj] = { subject: subj, sent: 0, opened: 0, clicked: 0, bounced: 0 };
+      grouped[subj].bounced++;
     }
 
     const subjects = Object.values(grouped).sort((a, b) => b.sent - a.sent);

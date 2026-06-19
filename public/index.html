@@ -380,7 +380,7 @@
     <div class="table-header">
       <div>
         <div class="table-title">By Subject Line</div>
-        <div class="note">Sent from Messages API · Bounced from Bounces API · Opens &amp; Clicks shown in cards above</div>
+        <div class="note">Opened &amp; Clicked = unique recipients · Bounced from Bounces API · Click column headers to sort</div>
       </div>
       <div class="table-meta" id="tableMeta"></div>
     </div>
@@ -390,13 +390,17 @@
           <tr>
             <th data-col="subject">Subject</th>
             <th data-col="sent" class="num sort-desc">Sent</th>
+            <th data-col="opened" class="num">Opened</th>
+            <th data-col="openRate" class="num">Open %</th>
+            <th data-col="clicked" class="num">Clicked</th>
+            <th data-col="clickRate" class="num">Click %</th>
             <th data-col="bounced" class="num">Bounced</th>
             <th data-col="bounceRate" class="num">Bounce %</th>
           </tr>
         </thead>
         <tbody id="subjectBody">
           <tr>
-            <td colspan="4">
+            <td colspan="8">
               <div class="placeholder">
                 <div class="placeholder-icon">📊</div>
                 <p>Set a date range and click Search to load stats</p>
@@ -486,10 +490,17 @@
     if (!d) return '—';
     return (n / d * 100).toFixed(1) + '%';
   }
-  function rateBadge(rate) {
-    if (rate === '—') return `<span>${rate}</span>`;
+  function rateBadge(rate, type = 'bounce') {
+    if (rate === '—') return `<span style="color:#dee2e6">—</span>`;
     const v = parseFloat(rate);
-    const cls = v > 5 ? 'badge-bad' : v > 2 ? 'badge-warn' : 'badge-ok';
+    let cls;
+    if (type === 'open') {
+      // Higher open/click rate = better (green)
+      cls = v >= 20 ? 'badge-ok' : v >= 10 ? 'badge-warn' : 'badge-bad';
+    } else {
+      // Higher bounce rate = worse (red)
+      cls = v > 5 ? 'badge-bad' : v > 2 ? 'badge-warn' : 'badge-ok';
+    }
     return `<span class="badge ${cls}">${rate}</span>`;
   }
 
@@ -556,21 +567,22 @@
 
     const sorted = [...tableData].sort((a, b) => {
       let av = a[sortCol], bv = b[sortCol];
-      if (sortCol === 'bounceRate') {
-        av = a.sent ? a.bounced / a.sent : 0;
-        bv = b.sent ? b.bounced / b.sent : 0;
-      }
+      if (sortCol === 'bounceRate') { av = a.sent ? a.bounced / a.sent : 0; bv = b.sent ? b.bounced / b.sent : 0; }
+      if (sortCol === 'openRate')   { av = a.sent ? a.opened / a.sent : 0;  bv = b.sent ? b.opened / b.sent : 0; }
+      if (sortCol === 'clickRate')  { av = a.sent ? a.clicked / a.sent : 0; bv = b.sent ? b.clicked / b.sent : 0; }
       if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return sortDir === 'asc' ? av - bv : bv - av;
     });
 
     const body = document.getElementById('subjectBody');
     if (sorted.length === 0) {
-      body.innerHTML = `<tr><td colspan="4"><div class="placeholder"><div class="placeholder-icon">🔍</div><p>No messages found for this date range and subject filter</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">🔍</div><p>No messages found for this date range and subject filter</p></div></td></tr>`;
       return;
     }
 
     body.innerHTML = sorted.map(row => {
+      const oRate = row.sent ? pct(row.opened, row.sent) : '—';
+      const cRate = row.sent ? pct(row.clicked, row.sent) : '—';
       const bRate = row.sent ? pct(row.bounced, row.sent) : '—';
       const id = safeId(row.subject);
       return `
@@ -580,11 +592,15 @@
             ${escHtml(row.subject)}
           </td>
           <td class="num">${fmt(row.sent)}</td>
+          <td class="num">${row.opened > 0 ? `<strong style="color:#3a86ff">${fmt(row.opened)}</strong>` : fmt(row.opened)}</td>
+          <td class="num">${rateBadge(oRate, 'open')}</td>
+          <td class="num">${row.clicked > 0 ? `<strong style="color:#8338ec">${fmt(row.clicked)}</strong>` : fmt(row.clicked)}</td>
+          <td class="num">${rateBadge(cRate, 'open')}</td>
           <td class="num">${fmt(row.bounced)}</td>
           <td class="num">${rateBadge(bRate)}</td>
         </tr>
         <tr id="detail-row-${id}" style="display:none">
-          <td colspan="4" style="padding:0;border-bottom:2px solid #FFBE00">
+          <td colspan="8" style="padding:0;border-bottom:2px solid #FFBE00">
             <div id="detail-wrap-${id}" style="background:#f8f9fa"></div>
           </td>
         </tr>`;
@@ -722,7 +738,7 @@
     ['s-sent','s-opens','s-clicks','s-bounces','s-unsubs','s-spam'].forEach(id => {
       document.getElementById(id).textContent = '…';
     });
-    document.getElementById('subjectBody').innerHTML = `<tr><td colspan="4"><div class="placeholder"><span class="loading-spinner"></span> Fetching messages…</div></td></tr>`;
+    document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><span class="loading-spinner"></span> Fetching messages…</div></td></tr>`;
     document.getElementById('tableMeta').textContent = '';
     document.getElementById('cappedWarning').style.display = 'none';
 
@@ -758,7 +774,7 @@
       renderTable();
     } catch (err) {
       showError(err.message);
-      document.getElementById('subjectBody').innerHTML = `<tr><td colspan="4"><div class="placeholder"><div class="placeholder-icon">❌</div><p>${escHtml(err.message)}</p></div></td></tr>`;
+      document.getElementById('subjectBody').innerHTML = `<tr><td colspan="8"><div class="placeholder"><div class="placeholder-icon">❌</div><p>${escHtml(err.message)}</p></div></td></tr>`;
     } finally {
       btn.disabled = false;
       btn.textContent = 'Search';
