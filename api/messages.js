@@ -1,9 +1,13 @@
 const { getMessages, getBounces, getOpens, getClicks } = require('../postmark');
+const requireAuth = require('../lib/requireAuth');
 
 function dateStr(d) { return d.toISOString().split('T')[0]; }
 
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
 
   const token = process.env.POSTMARK_SERVER_TOKEN || req.headers['x-postmark-token'];
   if (!token) {
